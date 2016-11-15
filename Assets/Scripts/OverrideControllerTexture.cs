@@ -1,35 +1,33 @@
 ﻿using UnityEngine;
-using System.Runtime.InteropServices;
-using VRTK;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 /// <summary>
 /// Override the texture of the Vive controllers, with your own texture, after SteamVR has loaded and applied the original texture.
 /// </summary>
 public class OverrideControllerTexture : SteamVR_RenderModel
 {
-    #region Instance variables
     public List<Texture2D> skinList;
-    enum MenuOption { Default = 0, Mag_Selected = 1, Calendar_Selected = 2, Sun_Selected = 3, Building_Selected = 4};
-    int currentMenu = (int)MenuOption.Default;
-    #endregion
+    private MenuDisplayOption currentMenu = MenuDisplayOption.Default;
 
-    void OnEnable()
-    {
-        EventHandlerLeftController.OnTouchpadPress += TouchPadPress;
-    }
-
-    void OnDisable()
-    {
-        EventHandlerLeftController.OnTouchpadPress -= TouchPadPress;
-    }
+    private enum MenuDisplayOption { Default = 0, Calendar_Selected = 1, Sun_Selected = 2, Building_Selected = 3 };
 
     protected new void Update()
     {
         base.Update();
         //Subscribe to the event that is called by SteamVR_RenderModel, when the controller mesh + texture, has been loaded completely.
         SteamVR_Utils.Event.Listen("render_model_loaded", OnControllerLoaded);
+    }
+
+    void OnEnable()
+    {
+        LeftMenuController.OnMenuSelection += UpdateUI;
+    }
+
+    void OnDisable()
+    {
+        LeftMenuController.OnMenuSelection -= UpdateUI;
     }
 
     /// <summary>
@@ -60,47 +58,39 @@ public class OverrideControllerTexture : SteamVR_RenderModel
     {
         if (args[0].Equals(this))
         {
-            UpdateControllerTexture(skinList.ElementAt(currentMenu), this.gameObject.transform);
+            UpdateControllerTexture(skinList.ElementAt((int)MenuDisplayOption.Default), this.gameObject.transform);
         }
     }
 
-    private void TouchPadPress(object sender, ControllerInteractionEventArgs e)
+    private void UpdateController()
     {
-        UpdateMenu(e);
-        UpdateControllerTexture(skinList.ElementAt(currentMenu), this.gameObject.transform);
+        UpdateControllerTexture(skinList.ElementAt((int)currentMenu), this.gameObject.transform);
     }
 
-    private void UpdateMenu(ControllerInteractionEventArgs e)
+    private void UpdateUI(LeftMenuController.MenuOption menuSelection)
     {
-        int menuOptionSelected = (int)GetMenuOptionSelected(e.touchpadAngle);
-
-        if (currentMenu == menuOptionSelected)
-        {
-            currentMenu = (int)MenuOption.Default;
-        }
-        else
-        {
-            currentMenu = menuOptionSelected;
-        }    
+        UpdateMenu(menuSelection);
+        UpdateController();
     }
 
-    private MenuOption GetMenuOptionSelected(float angle)
+    private void UpdateMenu(LeftMenuController.MenuOption menuSelection)
     {
-        if (angle >= 45 && angle < 135)
+        try
         {
-            return MenuOption.Building_Selected;
+            MenuDisplayOption selection = (MenuDisplayOption)Enum.Parse(typeof(MenuDisplayOption), menuSelection.ToString());
+
+            if(currentMenu == selection)
+            {
+                currentMenu = MenuDisplayOption.Default;
+            }
+            else
+            {
+                currentMenu = selection;
+            }
         }
-        else if (angle >= 135 && angle < 225)
+        catch (ArgumentException)
         {
-            return MenuOption.Mag_Selected;
-        }
-        else if (angle >= 225 && angle < 315)
-        {
-            return MenuOption.Sun_Selected;
-        }
-        else
-        {
-            return MenuOption.Calendar_Selected;
-        }
+            return;
+        } 
     }
 }
