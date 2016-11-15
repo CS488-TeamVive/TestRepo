@@ -8,6 +8,8 @@ public class BuildingMenu : MonoBehaviour {
     private int coordCount;
     private bool isBuilding = false;
 
+    private enum acceptableMenus { Mag_Selected };
+
     void OnEnable()
     {
         LeftMenuController.OnMenuSelection += EnableBuildingMode;
@@ -24,6 +26,8 @@ public class BuildingMenu : MonoBehaviour {
     {     
         if (selection != LeftMenuController.MenuOption.Building_Selected)
         {
+            if(!isAcceptable(selection))
+                isBuilding = false;
             return;
         }
 
@@ -92,5 +96,18 @@ public class BuildingMenu : MonoBehaviour {
         coordCount = 0;
 
         return cube;
+    }
+
+    private bool isAcceptable(LeftMenuController.MenuOption selection)
+    {
+        try
+        {
+            acceptableMenus option = (acceptableMenus)Enum.Parse(typeof(acceptableMenus), selection.ToString());
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
     }
 }
